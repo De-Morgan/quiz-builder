@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum QuestionType {
+  SINGLE
+  MULTIPLE
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  quizzes      Quiz[]
+}
+
+model Quiz {
+  id        String     @id @default(uuid())
+  title     String
+  published Boolean    @default(false)
+  permalink String?    @unique
+  ownerId   String
+  owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  questions Question[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Question {
+  id      String       @id @default(uuid())
+  text    String
+  type    QuestionType
+  order   Int
+  quizId  String
+  quiz    Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers Answer[]
+}
+
+model Answer {
+  id         String   @id @default(uuid())
+  text       String
+  isCorrect  Boolean
+  order      Int
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}

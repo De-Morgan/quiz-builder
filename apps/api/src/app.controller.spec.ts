@@ -15,8 +15,13 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('returns service metadata with docs and health pointers', () => {
+      expect(appController.getInfo()).toEqual({
+        name: 'quiz-builder-api',
+        version: '1.0.0',
+        docs: '/docs',
+        health: '/health',
+      });
     });
   });
 });
