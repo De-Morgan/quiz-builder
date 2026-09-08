@@ -384,6 +384,126 @@ describe('Quizzes (e2e)', () => {
     });
   });
 
+  describe('patch a question', () => {
+    let token: string;
+    let quizId: string;
+    let singleId: string;
+    let multiId: string;
+
+    interface Q {
+      questions: { id: string; type: string; answers: { text: string }[] }[];
+    }
+
+    beforeEach(async () => {
+      token = await registerUser('maya@example.com');
+      const res = await request(http)
+        .post('/quizzes')
+        .set(auth(token))
+        .send(quizBody())
+        .expect(201);
+      const quiz = dataOf<{ id: string } & Q>(res);
+      quizId = quiz.id;
+      singleId = quiz.questions.find((q) => q.type === 'SINGLE')!.id;
+      multiId = quiz.questions.find((q) => q.type === 'MULTIPLE')!.id;
+    });
+
+    const question = async (id: string) => {
+      const body = dataOf<Q>(
+        await request(http)
+          .get(`/quizzes/${quizId}`)
+          .set(auth(token))
+          .expect(200),
+      );
+      return body.questions.find((q) => q.id === id)!;
+    };
+
+    it('updates only the question text', async () => {
+      await request(http)
+        .patch(`/quizzes/${quizId}/questions/${singleId}`)
+        .set(auth(token))
+        .send({ text: 'New wording?' })
+        .expect(200);
+
+      const q = await question(singleId);
+      expect(q.answers.map((a) => a.text)).toEqual(['Paris', 'Lyon']);
+      const detail = await request(http)
+        .get(`/quizzes/${quizId}`)
+        .set(auth(token))
+        .expect(200);
+      expect(
+        dataOf<{ questions: { id: string; text: string }[] }>(
+          detail,
+        ).questions.find((x) => x.id === singleId)!.text,
+      ).toBe('New wording?');
+    });
+
+    it('replaces only the answers', async () => {
+      await request(http)
+        .patch(`/quizzes/${quizId}/questions/${multiId}`)
+        .set(auth(token))
+        .send({
+          answers: [
+            { text: 'yes', isCorrect: true },
+            { text: 'no', isCorrect: false },
+          ],
+        })
+        .expect(200);
+
+      const q = await question(multiId);
+      expect(q.answers.map((a) => a.text)).toEqual(['yes', 'no']);
+    });
+
+    it('rejects flipping type to SINGLE with two correct answers (400)', async () => {
+      await request(http)
+        .patch(`/quizzes/${quizId}/questions/${multiId}`)
+        .set(auth(token))
+        .send({ type: 'SINGLE' })
+        .expect(400);
+    });
+
+    it('rejects an empty body (400)', async () => {
+      await request(http)
+        .patch(`/quizzes/${quizId}/questions/${singleId}`)
+        .set(auth(token))
+        .send({})
+        .expect(400);
+    });
+
+    it('rejects new text that clashes with a sibling question (400)', async () => {
+      await request(http)
+        .patch(`/quizzes/${quizId}/questions/${singleId}`)
+        .set(auth(token))
+        .send({ text: 'pick the primes' })
+        .expect(400);
+    });
+
+    it('409s once the quiz is published', async () => {
+      await request(http)
+        .post(`/quizzes/${quizId}/publish`)
+        .set(auth(token))
+        .expect(200);
+      await request(http)
+        .patch(`/quizzes/${quizId}/questions/${singleId}`)
+        .set(auth(token))
+        .send({ text: 'x' })
+        .expect(409);
+    });
+
+    it('404s for another user and for an unknown question id', async () => {
+      const bob = await registerUser('bob@example.com');
+      await request(http)
+        .patch(`/quizzes/${quizId}/questions/${singleId}`)
+        .set(auth(bob))
+        .send({ text: 'x' })
+        .expect(404);
+      await request(http)
+        .patch(`/quizzes/${quizId}/questions/does-not-exist`)
+        .set(auth(token))
+        .send({ text: 'x' })
+        .expect(404);
+    });
+  });
+
   describe('partial update', () => {
     let token: string;
     let quizId: string;

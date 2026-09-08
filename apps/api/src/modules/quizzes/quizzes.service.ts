@@ -10,6 +10,7 @@ import { QuestionType } from '../../database/generated/enums';
 import { generatePermalink } from '../../common/permalink';
 import { CreateQuizDto } from './dto/create-quiz.dto';
 import { QuestionDto } from './dto/question.dto';
+import { UpdateQuestionDto } from './dto/update-question.dto';
 import { UpdateQuizDto } from './dto/update-quiz.dto';
 import { QuizDetailDto } from './dto/quiz-detail.dto';
 import { QuizSummaryDto } from './dto/quiz-summary.dto';
@@ -151,6 +152,83 @@ export class QuizzesService {
     return this.toDetailDto(updated);
   }
 
+  async updateQuestion(
+    id: string,
+    ownerId: string,
+    questionId: string,
+    dto: UpdateQuestionDto,
+  ): Promise<QuizDetailDto> {
+    const quiz = await this.getOwnedQuizOrThrow(id, ownerId);
+    if (quiz.published) {
+      throw new ConflictException(
+        'A published quiz cannot have its questions changed',
+      );
+    }
+    const question = quiz.questions.find((q) => q.id === questionId);
+    if (!question) {
+      throw new NotFoundException('Question not found');
+    }
+    if (
+      dto.text === undefined &&
+      dto.type === undefined &&
+      dto.answers === undefined
+    ) {
+      throw new BadRequestException('Provide text, type, or answers to update');
+    }
+
+    const merged: QuestionDto = {
+      text: dto.text ?? question.text,
+      type: dto.type ?? question.type,
+      answers:
+        dto.answers ??
+        question.answers.map((a) => ({ text: a.text, isCorrect: a.isCorrect })),
+    };
+    this.validateQuizInvariants([merged]);
+
+    if (dto.text !== undefined) {
+      const clash = quiz.questions.some(
+        (q) =>
+          q.id !== questionId && normalize(q.text) === normalize(dto.text!),
+      );
+      if (clash) {
+        throw new BadRequestException(
+          'Quiz already has a question with that text',
+        );
+      }
+    }
+
+    const data = {
+      ...(dto.text !== undefined ? { text: dto.text } : {}),
+      ...(dto.type !== undefined ? { type: dto.type } : {}),
+    };
+
+    await this.runUniqueWrite(async () => {
+      if (dto.answers !== undefined) {
+        await this.databaseService.$transaction([
+          this.databaseService.answer.deleteMany({ where: { questionId } }),
+          this.databaseService.question.update({
+            where: { id: questionId },
+            data: {
+              ...data,
+              answers: { create: this.buildAnswersCreate(dto.answers) },
+            },
+          }),
+        ]);
+      } else {
+        await this.databaseService.question.update({
+          where: { id: questionId },
+          data,
+        });
+      }
+    }, 'Quiz already has a question with that text');
+
+    const updated = await this.databaseService.quiz.findUniqueOrThrow({
+      where: { id },
+      include: questionsInclude,
+    });
+    return this.toDetailDto(updated);
+  }
+
   async removeQuestion(
     id: string,
     ownerId: string,
@@ -240,14 +318,16 @@ export class QuizzesService {
       text: question.text,
       type: question.type,
       order,
-      answers: {
-        create: question.answers.map((answer, answerOrder) => ({
-          text: answer.text,
-          isCorrect: answer.isCorrect,
-          order: answerOrder,
-        })),
-      },
+      answers: { create: this.buildAnswersCreate(question.answers) },
     };
+  }
+
+  private buildAnswersCreate(answers: { text: string; isCorrect: boolean }[]) {
+    return answers.map((answer, order) => ({
+      text: answer.text,
+      isCorrect: answer.isCorrect,
+      order,
+    }));
   }
 
   /**

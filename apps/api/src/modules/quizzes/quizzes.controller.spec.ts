@@ -12,6 +12,7 @@ describe('QuizzesController', () => {
     update: jest.Mock;
     remove: jest.Mock;
     addQuestion: jest.Mock;
+    updateQuestion: jest.Mock;
     removeQuestion: jest.Mock;
     publish: jest.Mock;
   };
@@ -26,6 +27,7 @@ describe('QuizzesController', () => {
       update: jest.fn().mockResolvedValue('updated'),
       remove: jest.fn().mockResolvedValue(undefined),
       addQuestion: jest.fn().mockResolvedValue('with-question'),
+      updateQuestion: jest.fn().mockResolvedValue('patched-question'),
       removeQuestion: jest.fn().mockResolvedValue('without-question'),
       publish: jest.fn().mockResolvedValue({ id: 'q', permalink: 'abc123' }),
     };
@@ -69,6 +71,17 @@ describe('QuizzesController', () => {
     const dto = { text: 'q', type: 'SINGLE', answers: [] } as never;
     await controller.addQuestion(user, 'quiz-9', dto);
     expect(service.addQuestion).toHaveBeenCalledWith('quiz-9', 'user-1', dto);
+  });
+
+  it('delegates updateQuestion with the id, user id, question id and body', async () => {
+    const dto = { text: 'new' } as never;
+    await controller.updateQuestion(user, 'quiz-9', 'ques-3', dto);
+    expect(service.updateQuestion).toHaveBeenCalledWith(
+      'quiz-9',
+      'user-1',
+      'ques-3',
+      dto,
+    );
   });
 
   it('delegates removeQuestion with the id, user id and question id', async () => {

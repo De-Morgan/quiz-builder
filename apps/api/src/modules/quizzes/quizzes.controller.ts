@@ -27,6 +27,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { QuizzesService } from './quizzes.service';
 import { CreateQuizDto } from './dto/create-quiz.dto';
 import { QuestionDto } from './dto/question.dto';
+import { UpdateQuestionDto } from './dto/update-question.dto';
 import { UpdateQuizDto } from './dto/update-quiz.dto';
 import { QuizDetailDto } from './dto/quiz-detail.dto';
 import { QuizSummaryDto } from './dto/quiz-summary.dto';
@@ -102,6 +103,27 @@ export class QuizzesController {
     @Body() dto: QuestionDto,
   ): Promise<QuizDetailDto> {
     return this.quizzesService.addQuestion(id, user.id, dto);
+  }
+
+  @Patch(':id/questions/:questionId')
+  @ApiOperation({ summary: 'Partially update a question on a draft quiz' })
+  @ApiOkResponse({ type: QuizDetailDto })
+  @ApiBadRequestResponse({
+    description: 'Invariant failure, duplicate text, or an empty body',
+  })
+  @ApiNotFoundResponse({
+    description: 'Quiz or question not found or not owned',
+  })
+  @ApiConflictResponse({
+    description: 'Quiz is published and cannot be edited',
+  })
+  updateQuestion(
+    @CurrentUser() user: UserDto,
+    @Param('id') id: string,
+    @Param('questionId') questionId: string,
+    @Body() dto: UpdateQuestionDto,
+  ): Promise<QuizDetailDto> {
+    return this.quizzesService.updateQuestion(id, user.id, questionId, dto);
   }
 
   @Delete(':id/questions/:questionId')

@@ -51,7 +51,11 @@ describe('QuizzesService', () => {
     question: {
       deleteMany: jest.Mock;
       create: jest.Mock;
+      update: jest.Mock;
       delete: jest.Mock;
+    };
+    answer: {
+      deleteMany: jest.Mock;
     };
     $transaction: jest.Mock;
   };
@@ -69,7 +73,11 @@ describe('QuizzesService', () => {
       question: {
         deleteMany: jest.fn(),
         create: jest.fn().mockResolvedValue({ id: 'q-new' }),
+        update: jest.fn().mockResolvedValue({ id: 'q-1' }),
         delete: jest.fn().mockResolvedValue({ id: 'q-1' }),
+      },
+      answer: {
+        deleteMany: jest.fn(),
       },
       $transaction: jest.fn().mockResolvedValue(undefined),
     };
@@ -248,6 +256,103 @@ describe('QuizzesService', () => {
         data: { quizId: string; order: number };
       };
       expect(arg.data).toMatchObject({ quizId: 'quiz-1', order: 1 });
+    });
+  });
+
+  describe('updateQuestion', () => {
+    const multiQuestion = () => ({
+      id: 'q-1',
+      text: 'Pick primes',
+      type: QuestionType.MULTIPLE,
+      answers: [
+        { id: 'a-1', text: '2', isCorrect: true },
+        { id: 'a-2', text: '3', isCorrect: true },
+        { id: 'a-3', text: '4', isCorrect: false },
+      ],
+    });
+    const quizWith = (...questions: unknown[]) => storedQuiz({ questions });
+
+    it('rejects editing a question on a published quiz', async () => {
+      db.quiz.findUnique.mockResolvedValue(
+        storedQuiz({ published: true, questions: [multiQuestion()] }),
+      );
+      await expect(
+        service.updateQuestion('quiz-1', OWNER, 'q-1', { text: 'x' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('404s when the question is not in the quiz', async () => {
+      db.quiz.findUnique.mockResolvedValue(quizWith(multiQuestion()));
+      await expect(
+        service.updateQuestion('quiz-1', OWNER, 'missing', { text: 'x' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('rejects an empty body with 400', async () => {
+      db.quiz.findUnique.mockResolvedValue(quizWith(multiQuestion()));
+      await expect(
+        service.updateQuestion('quiz-1', OWNER, 'q-1', {}),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(db.question.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects flipping type to SINGLE while two answers stay correct', async () => {
+      db.quiz.findUnique.mockResolvedValue(quizWith(multiQuestion()));
+      await expect(
+        service.updateQuestion('quiz-1', OWNER, 'q-1', {
+          type: QuestionType.SINGLE,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects new text that duplicates a sibling question', async () => {
+      db.quiz.findUnique.mockResolvedValue(
+        quizWith(multiQuestion(), {
+          id: 'q-2',
+          text: 'Other',
+          type: QuestionType.SINGLE,
+          answers: [
+            { id: 'b-1', text: 'a', isCorrect: true },
+            { id: 'b-2', text: 'b', isCorrect: false },
+          ],
+        }),
+      );
+      await expect(
+        service.updateQuestion('quiz-1', OWNER, 'q-1', { text: ' other ' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('updates only the text without touching answers', async () => {
+      db.quiz.findUnique.mockResolvedValue(quizWith(multiQuestion()));
+      db.quiz.findUniqueOrThrow.mockResolvedValue(storedQuiz());
+
+      await service.updateQuestion('quiz-1', OWNER, 'q-1', {
+        text: 'Reworded',
+      });
+
+      expect(db.$transaction).not.toHaveBeenCalled();
+      expect(db.answer.deleteMany).not.toHaveBeenCalled();
+      expect(db.question.update).toHaveBeenCalledWith({
+        where: { id: 'q-1' },
+        data: { text: 'Reworded' },
+      });
+    });
+
+    it('replaces the answers inside a transaction', async () => {
+      db.quiz.findUnique.mockResolvedValue(quizWith(multiQuestion()));
+      db.quiz.findUniqueOrThrow.mockResolvedValue(storedQuiz());
+
+      await service.updateQuestion('quiz-1', OWNER, 'q-1', {
+        answers: [
+          { text: 'x', isCorrect: true },
+          { text: 'y', isCorrect: true },
+        ],
+      });
+
+      expect(db.$transaction).toHaveBeenCalledTimes(1);
+      expect(db.answer.deleteMany).toHaveBeenCalledWith({
+        where: { questionId: 'q-1' },
+      });
     });
   });
 
