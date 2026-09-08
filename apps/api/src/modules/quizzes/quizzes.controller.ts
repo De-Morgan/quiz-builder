@@ -69,9 +69,11 @@ export class QuizzesController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Replace a quiz title and questions' })
+  @ApiOperation({ summary: 'Update a quiz title and/or questions' })
   @ApiOkResponse({ type: QuizDetailDto })
-  @ApiBadRequestResponse({ description: 'Validation or invariant failure' })
+  @ApiBadRequestResponse({
+    description: 'Validation or invariant failure, or an empty body',
+  })
   @ApiNotFoundResponse({ description: 'Quiz not found or not owned' })
   @ApiConflictResponse({
     description: 'Quiz is published and cannot be edited',

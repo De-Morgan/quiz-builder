@@ -74,18 +74,28 @@ export class QuizzesService {
     if (quiz.published) {
       throw new ConflictException('A published quiz cannot be edited');
     }
-    this.validateQuizInvariants(dto.questions);
+    if (dto.title === undefined && dto.questions === undefined) {
+      throw new BadRequestException('Provide a title or questions to update');
+    }
 
-    await this.databaseService.$transaction([
-      this.databaseService.question.deleteMany({ where: { quizId: id } }),
-      this.databaseService.quiz.update({
+    if (dto.questions !== undefined) {
+      this.validateQuizInvariants(dto.questions);
+      await this.databaseService.$transaction([
+        this.databaseService.question.deleteMany({ where: { quizId: id } }),
+        this.databaseService.quiz.update({
+          where: { id },
+          data: {
+            ...(dto.title !== undefined ? { title: dto.title } : {}),
+            questions: { create: this.buildQuestionsCreate(dto.questions) },
+          },
+        }),
+      ]);
+    } else {
+      await this.databaseService.quiz.update({
         where: { id },
-        data: {
-          title: dto.title,
-          questions: { create: this.buildQuestionsCreate(dto.questions) },
-        },
-      }),
-    ]);
+        data: { title: dto.title },
+      });
+    }
 
     const updated = await this.databaseService.quiz.findUniqueOrThrow({
       where: { id },

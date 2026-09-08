@@ -384,6 +384,80 @@ describe('Quizzes (e2e)', () => {
     });
   });
 
+  describe('partial update', () => {
+    let token: string;
+    let quizId: string;
+
+    beforeEach(async () => {
+      token = await registerUser('maya@example.com');
+      const res = await request(http)
+        .post('/quizzes')
+        .set(auth(token))
+        .send(quizBody())
+        .expect(201);
+      quizId = dataOf<{ id: string }>(res).id;
+    });
+
+    const detail = async () =>
+      dataOf<{ title: string; questions: unknown[] }>(
+        await request(http)
+          .get(`/quizzes/${quizId}`)
+          .set(auth(token))
+          .expect(200),
+      );
+
+    it('updates the title without touching questions', async () => {
+      await request(http)
+        .patch(`/quizzes/${quizId}`)
+        .set(auth(token))
+        .send({ title: 'Renamed' })
+        .expect(200);
+
+      const body = await detail();
+      expect(body.title).toBe('Renamed');
+      expect(body.questions).toHaveLength(2);
+    });
+
+    it('replaces questions without touching the title', async () => {
+      await request(http)
+        .patch(`/quizzes/${quizId}`)
+        .set(auth(token))
+        .send({
+          questions: [
+            {
+              text: 'Only question',
+              type: 'SINGLE',
+              answers: [
+                { text: 'a', isCorrect: true },
+                { text: 'b', isCorrect: false },
+              ],
+            },
+          ],
+        })
+        .expect(200);
+
+      const body = await detail();
+      expect(body.title).toBe('General knowledge');
+      expect(body.questions).toHaveLength(1);
+    });
+
+    it('rejects an empty body with 400', async () => {
+      await request(http)
+        .patch(`/quizzes/${quizId}`)
+        .set(auth(token))
+        .send({})
+        .expect(400);
+    });
+
+    it('rejects an empty questions array with 400', async () => {
+      await request(http)
+        .patch(`/quizzes/${quizId}`)
+        .set(auth(token))
+        .send({ questions: [] })
+        .expect(400);
+    });
+  });
+
   describe('cross-user isolation', () => {
     it('hides another user’s quiz behind 404 for every route', async () => {
       const alice = await registerUser('alice@example.com');

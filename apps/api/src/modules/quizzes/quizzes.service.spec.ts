@@ -336,6 +336,41 @@ describe('QuizzesService', () => {
       });
       expect(db.$transaction).toHaveBeenCalledTimes(1);
     });
+
+    it('updates only the title, leaving questions untouched', async () => {
+      db.quiz.findUnique.mockResolvedValue(storedQuiz());
+      db.quiz.findUniqueOrThrow.mockResolvedValue(storedQuiz());
+
+      await service.update('quiz-1', OWNER, { title: 'Renamed' });
+
+      expect(db.$transaction).not.toHaveBeenCalled();
+      expect(db.question.deleteMany).not.toHaveBeenCalled();
+      expect(db.quiz.update).toHaveBeenCalledWith({
+        where: { id: 'quiz-1' },
+        data: { title: 'Renamed' },
+      });
+    });
+
+    it('replaces questions without a title inside a transaction', async () => {
+      db.quiz.findUnique.mockResolvedValue(storedQuiz());
+      db.quiz.findUniqueOrThrow.mockResolvedValue(storedQuiz());
+
+      await service.update('quiz-1', OWNER, { questions: [singleQuestion()] });
+
+      expect(db.$transaction).toHaveBeenCalledTimes(1);
+      const updateArg = (db.quiz.update.mock.calls[0] as unknown[])[0] as {
+        data: Record<string, unknown>;
+      };
+      expect(updateArg.data).not.toHaveProperty('title');
+    });
+
+    it('rejects an empty patch with 400', async () => {
+      db.quiz.findUnique.mockResolvedValue(storedQuiz());
+      await expect(service.update('quiz-1', OWNER, {})).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(db.quiz.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('remove', () => {
