@@ -16,11 +16,15 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+  it('/ (GET) returns service metadata', async () => {
+    const res = await request(app.getHttpServer()).get('/').expect(200);
+    const body = res.body as { data: unknown };
+    expect(body.data).toEqual({
+      name: 'quiz-builder-api',
+      version: '1.0.0',
+      docs: '/docs',
+      health: '/health',
+    });
   });
 
   afterEach(async () => {

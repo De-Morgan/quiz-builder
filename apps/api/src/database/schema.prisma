@@ -41,6 +41,8 @@ model Question {
   quizId  String
   quiz    Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
   answers Answer[]
+
+  @@unique([quizId, text])
 }
 
 model Answer {
@@ -50,4 +52,6 @@ model Answer {
   order      Int
   questionId String
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, text])
 }

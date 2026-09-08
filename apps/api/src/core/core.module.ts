@@ -1,9 +1,4 @@
-import {
-  Global,
-  Module,
-  MiddlewareConsumer,
-  NestModule,
-} from '@nestjs/common';
+import { Global, Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { LoggerService } from './logger/logger.service';
