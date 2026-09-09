@@ -16,6 +16,23 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
+// The API wraps every successful response in an envelope:
+//   { success: true, statusCode, path, data: <payload> }
+// Unwrap it here so call sites (and the SWR fetcher) can treat `res.data` as
+// the real payload and the typed generics (`http.get<T>()`) stay accurate.
+http.interceptors.response.use((res) => {
+  const body = res.data;
+  if (
+    body &&
+    typeof body === "object" &&
+    body.success === true &&
+    "data" in body
+  ) {
+    res.data = body.data;
+  }
+  return res;
+});
+
 export type ApiError = { status: number; message: string; raw?: unknown };
 
 export const UNAUTHORIZED_EVENT = "qb:unauthorized";

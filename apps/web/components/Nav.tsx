@@ -19,9 +19,6 @@ export function Nav() {
           {status === "authed" ? (
             <>
               <Button asChild variant="ghost" size="sm">
-                <Link href={routes.dashboard}>Dashboard</Link>
-              </Button>
-              <Button asChild variant="ghost" size="sm">
                 <Link href={routes.newQuiz}>New quiz</Link>
               </Button>
               <Button

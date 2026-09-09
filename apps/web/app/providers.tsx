@@ -87,11 +87,14 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const authenticate = useCallback(
     async (path: string, email: string, password: string) => {
-      const res = await http.post<AuthResponse>(path, { email, password });
+      const res = await http.post<AuthResponse>(path, {
+        email,
+        password,
+      });
       setToken(res.data.accessToken);
       setUser(res.data.user);
       setStatus("authed");
-      router.push(routes.dashboard);
+      router.push(routes.home);
     },
     [router],
   );

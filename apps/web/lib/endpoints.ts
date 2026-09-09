@@ -17,7 +17,6 @@ export const routes = {
   home: "/",
   login: "/login",
   register: "/register",
-  dashboard: "/dashboard",
   newQuiz: "/quizzes/new",
   editQuiz: (id: string) => `/quizzes/${id}/edit`,
   take: (permalink: string) => `/q/${permalink}`,
