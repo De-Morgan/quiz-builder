@@ -1,98 +1,137 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Quiz Builder API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS REST API for the Quiz Builder. Authenticated users create quizzes; anonymous
+visitors take published quizzes via a permalink and get back only their score.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+The API is client-agnostic — it exposes REST only and has no coupling to the web
+frontend in `apps/web`.
 
-## Description
+## Stack
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- **NestJS 11** (Express platform)
+- **Prisma 7** ORM against **PostgreSQL** (pg driver adapter)
+- **JWT** auth via `@nestjs/passport` / `passport-jwt`, passwords hashed with `bcrypt`
+- **class-validator** / **class-transformer** DTO validation (global `ValidationPipe`,
+  `whitelist` + `transform`)
+- **helmet** + CORS (`WEB_ORIGIN`)
+- **Swagger** UI at `/docs` (non-production only)
+- Health checks via `@nestjs/terminus` at `/health`
 
-## Project setup
+## Project layout
 
-```bash
-$ pnpm install
+```
+src/
+  main.ts              bootstrap: helmet, CORS, ValidationPipe, Swagger
+  app.module.ts
+  config/              typed env config
+  core/                logger, response interceptor, request-logger middleware
+  database/            Prisma schema, generated client, migrations, DatabaseService
+  health/              /health endpoints
+  common/              permalink generator (6-char alphanumeric, uniqueness-checked)
+  modules/
+    auth/              register, login, JWT, /me
+    quizzes/           owner-scoped CRUD + publish + question management
+    public/            unauthenticated permalink lookup + scoring
 ```
 
-## Compile and run the project
+## Setup
+
+Requires Node, pnpm, and Docker (for the local Postgres container).
 
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+pnpm install
+cp .env.example .env      # adjust secrets as needed
 ```
 
-## Run tests
+## Running
 
 ```bash
-# unit tests
-$ pnpm run test
+# starts the Postgres container, applies migrations, then watch mode
+pnpm dev
 
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+# plain start / prod
+pnpm start
+pnpm start:prod
 ```
 
-## Deployment
+The server listens on `PORT` (default `3001`). Swagger UI: `http://localhost:3001/docs`.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Database
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+pnpm db:migrate      # create + apply a migration (prisma migrate dev)
+pnpm db:deploy       # apply migrations (prisma migrate deploy)
+pnpm db:generate     # regenerate the Prisma client
+pnpm db:reset        # drop + recreate + re-migrate
+pnpm db:studio       # Prisma Studio
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Data model: `User` → has many `Quiz` → has many `Question` → has many `Answer`.
+`Quiz` carries `published` and a nullable unique `permalink`. `Answer.isCorrect` is
+**never** serialized to public consumers.
 
-## Resources
+## Tests
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+pnpm test            # unit tests
+pnpm test:cov        # unit tests with coverage
+pnpm test:e2e        # spins up a throwaway Postgres container, pushes the schema,
+                     # runs the e2e suite against .env.test, then tears it down
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## Environment variables
 
-## Support
+| Variable | Description |
+| --- | --- |
+| `NODE_ENV` | `development` / `production` — disables Swagger when `production` |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `PORT` | HTTP port (default `3001`) |
+| `WEB_ORIGIN` | Allowed CORS origin |
+| `JWT_SECRET` | JWT signing secret (32+ chars) |
+| `JWT_EXPIRES_IN` | Access token lifetime in seconds |
+| `JWT_TOKEN_AUDIENCE` / `JWT_TOKEN_ISSUER` | JWT audience / issuer claims |
+| `POSTGRES_*` | Used by `docker-compose` and to compose `DATABASE_URL` |
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## API surface
 
-## Stay in touch
+### Auth (`/auth`)
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| `POST` | `/auth/register` | — | Register with email + password |
+| `POST` | `/auth/login` | — | Obtain a JWT |
+| `GET` | `/auth/me` | Bearer | Current user |
 
-## License
+### Quizzes (`/quizzes`) — all routes require a Bearer token and are owner-scoped
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/quizzes` | Create a draft quiz (title + 1–10 questions) |
+| `GET` | `/quizzes` | List the caller's quizzes |
+| `GET` | `/quizzes/:id` | Get one owned quiz |
+| `PATCH` | `/quizzes/:id` | Partial update of a draft quiz |
+| `POST` | `/quizzes/:id/questions` | Add a question to a draft quiz |
+| `PATCH` | `/quizzes/:id/questions/:questionId` | Partial update of a draft question |
+| `DELETE` | `/quizzes/:id/questions/:questionId` | Remove a question from a draft quiz |
+| `POST` | `/quizzes/:id/publish` | Publish — assigns a unique 6-char permalink |
+| `DELETE` | `/quizzes/:id` | Delete a quiz (draft or published) |
+
+### Public (`/public/quizzes`) — no auth
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/public/quizzes/:permalink` | Fetch a published quiz; correct answers are stripped |
+| `POST` | `/public/quizzes/:permalink/submit` | Submit answers; returns only a score (e.g. `5/8`) |
+
+## Domain rules (enforced server-side)
+
+- Auth required to create/edit/delete quizzes; each user sees only their own.
+- A quiz has a title and 1–10 questions; each question has text and 2–5 answers with
+  unique text (trimmed, case-insensitive).
+- `SINGLE` = exactly one correct answer. `MULTIPLE` = every correct answer selected and
+  no incorrect ones, to score the question correct.
+- Publishing assigns a random 6-character alphanumeric permalink, checked for uniqueness.
+- Published quizzes are immutable — the author may only delete them.
+- Taking a quiz requires no auth; visitor answers are not persisted and the response
+  contains only the score.
+- The public take-quiz payload never leaks which answers are correct.
