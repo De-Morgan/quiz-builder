@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/Spinner";
 import type { ApiError } from "@/lib/api";
+import { Eye, EyeOff } from "lucide-react";
 
 type Mode = "login" | "register";
 
@@ -62,12 +63,17 @@ export function AuthForm({
   mode: Mode;
   onSubmit: (email: string, password: string) => Promise<void>;
 }) {
+  const [showPassword, setShowPassword] = useState(false);
   const text = copy[mode];
   const [formError, setFormError] = useState<string | null>(null);
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { email: "", password: "" },
   });
+
+  const toggleShowPassword = () => {
+    setShowPassword((prev) => !prev);
+  };
 
   const submit = form.handleSubmit(async ({ email, password }) => {
     setFormError(null);
@@ -122,15 +128,31 @@ export function AuthForm({
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input
-                        type="password"
-                        autoComplete={
-                          mode === "login"
-                            ? "current-password"
-                            : "new-password"
-                        }
-                        {...field}
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          autoComplete={
+                            mode === "login"
+                              ? "current-password"
+                              : "new-password"
+                          }
+                          className="pr-10"
+                          {...field}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={toggleShowPassword}
+                          aria-label={
+                            showPassword ? "Hide password" : "Show password"
+                          }
+                          aria-pressed={showPassword}
+                          className="text-muted-foreground absolute inset-y-0 right-0 h-full px-3 hover:bg-transparent"
+                        >
+                          {showPassword ? <EyeOff /> : <Eye />}
+                        </Button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
