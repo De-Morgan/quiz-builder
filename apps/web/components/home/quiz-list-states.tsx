@@ -1,3 +1,4 @@
+import { FileQuestionIcon } from "lucide-react";
 import Link from "next/link";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -6,7 +7,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,10 +15,11 @@ import { routes } from "@/lib/endpoints";
 
 export function QuizListSkeleton() {
   return (
-    <div className="space-y-3" aria-busy="true">
-      <Skeleton className="h-28 w-full" />
-      <Skeleton className="h-28 w-full" />
-      <Skeleton className="h-28 w-full" />
+    <div className="grid gap-4 sm:grid-cols-2" aria-busy="true">
+      <Skeleton className="h-40 w-full rounded-xl" />
+      <Skeleton className="h-40 w-full rounded-xl" />
+      <Skeleton className="h-40 w-full rounded-xl" />
+      <Skeleton className="h-40 w-full rounded-xl" />
     </div>
   );
 }
@@ -50,15 +51,19 @@ export function QuizListError({
 
 export function EmptyQuizzes() {
   return (
-    <Card>
-      <CardHeader>
+    <Card className="py-12">
+      <CardContent className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+        <span
+          className="flex size-11 items-center justify-center rounded-full bg-muted"
+          aria-hidden="true"
+        >
+          <FileQuestionIcon className="size-5 text-muted-foreground" />
+        </span>
         <CardTitle>No quizzes yet</CardTitle>
         <CardDescription>
           Create your first quiz to share it with others.
         </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Button asChild>
+        <Button asChild className="mt-2">
           <Link href={routes.newQuiz}>Create your first quiz</Link>
         </Button>
       </CardContent>

@@ -19,7 +19,7 @@ type Props = {
 
 export function QuizRow({ quiz, mutate }: Props) {
   return (
-    <Card>
+    <Card className="h-full transition-shadow hover:shadow-md hover:ring-foreground/20">
       <CardHeader>
         <CardTitle>{quiz.title}</CardTitle>
         <CardDescription>
