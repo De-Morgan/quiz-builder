@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { SWRConfig } from "swr";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
 
 import { UNAUTHORIZED_EVENT, http, type ApiError } from "@/lib/api";
 import { api, routes } from "@/lib/endpoints";
@@ -114,6 +115,13 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+export function ThemeProvider({
+  children,
+  ...props
+}: React.ComponentProps<typeof NextThemesProvider>) {
+  return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SWRConfig
@@ -128,7 +136,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       }}
     >
-      <AuthProvider>{children}</AuthProvider>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        disableTransitionOnChange
+        enableSystem
+      >
+        <AuthProvider>{children}</AuthProvider>{" "}
+      </ThemeProvider>
     </SWRConfig>
   );
 }
