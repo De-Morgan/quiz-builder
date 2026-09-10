@@ -9,6 +9,8 @@ import type {
   CurrentUser,
   QuestionInput,
   QuizDetail,
+  Score,
+  SubmitDto,
   UpdateQuestionDto,
   UpdateQuizDto,
 } from "./types";
@@ -61,6 +63,14 @@ export async function deleteQuestion(
 
 export async function deleteQuiz(id: string): Promise<void> {
   await http.delete(api.quiz(id));
+}
+
+export async function submitQuiz(
+  permalink: string,
+  dto: SubmitDto,
+): Promise<Score> {
+  const res = await http.post<Score>(api.submit(permalink), dto);
+  return res.data;
 }
 
 export async function publishQuiz(
