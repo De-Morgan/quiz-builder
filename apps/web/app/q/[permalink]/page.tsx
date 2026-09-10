@@ -6,9 +6,11 @@ import useSWR from "swr";
 
 import { ScoreCard } from "@/components/ScoreCard";
 import { Spinner } from "@/components/Spinner";
+import { QuizProgress } from "@/components/take/quiz-progress";
 import { TakeQuestion } from "@/components/take/take-question";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import type { ApiError } from "@/lib/api";
 import { api } from "@/lib/endpoints";
 import { submitQuiz } from "@/lib/quizzes";
@@ -25,6 +27,7 @@ export default function TakeQuizPage() {
   );
 
   const [selected, setSelected] = useState<Selections>({});
+  const [step, setStep] = useState(0);
   const [score, setScore] = useState<Score | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -66,6 +69,7 @@ export default function TakeQuizPage() {
 
   const reset = () => {
     setSelected({});
+    setStep(0);
     setScore(null);
     setSubmitError(null);
   };
@@ -91,25 +95,37 @@ export default function TakeQuizPage() {
     );
   }
 
+  if (score) {
+    return (
+      <main className="mx-auto max-w-2xl space-y-6 px-4 py-8">
+        <h1 className="text-2xl font-semibold">{data.title}</h1>
+        <ScoreCard score={score} onRetry={reset} />
+      </main>
+    );
+  }
+
+  const total = data.questions.length;
+  const safeStep = Math.min(step, total - 1);
+  const question = data.questions[safeStep];
+  const isLast = safeStep === total - 1;
+  const answered = !!question && (selected[question.id]?.size ?? 0) > 0;
+
   return (
     <main className="mx-auto max-w-2xl space-y-6 px-4 py-8">
       <h1 className="text-2xl font-semibold">{data.title}</h1>
 
-      {score ? (
-        <ScoreCard score={score} onRetry={reset} />
-      ) : (
-        <>
-          <div className="grid gap-4">
-            {data.questions.map((question, i) => (
-              <TakeQuestion
-                key={question.id}
-                question={question}
-                index={i}
-                selected={selected[question.id] ?? new Set()}
-                onToggle={toggle(question.id, question.type)}
-              />
-            ))}
-          </div>
+      <Card>
+        <CardContent className="space-y-6">
+          <QuizProgress current={safeStep + 1} total={total} />
+
+          {question ? (
+            <TakeQuestion
+              question={question}
+              index={safeStep}
+              selected={selected[question.id] ?? new Set()}
+              onToggle={toggle(question.id, question.type)}
+            />
+          ) : null}
 
           {submitError ? (
             <Alert variant="destructive">
@@ -117,13 +133,28 @@ export default function TakeQuizPage() {
               <AlertDescription>{submitError}</AlertDescription>
             </Alert>
           ) : null}
+        </CardContent>
 
-          <Button onClick={handleSubmit} disabled={submitting}>
-            {submitting ? <Spinner /> : null}
-            Submit answers
+        <CardFooter className="justify-between">
+          <Button
+            variant="outline"
+            onClick={() => setStep((s) => Math.max(0, s - 1))}
+            disabled={safeStep === 0}
+          >
+            Back
           </Button>
-        </>
-      )}
+          {isLast ? (
+            <Button onClick={handleSubmit} disabled={!answered || submitting}>
+              {submitting ? <Spinner /> : null}
+              Submit
+            </Button>
+          ) : (
+            <Button onClick={() => setStep((s) => s + 1)} disabled={!answered}>
+              Next Question
+            </Button>
+          )}
+        </CardFooter>
+      </Card>
     </main>
   );
 }

@@ -58,19 +58,25 @@ describe("TakeQuizPage", () => {
     expect(screen.getByText(/quiz not found/i)).toBeInTheDocument();
   });
 
-  it("enforces single-selection and submits the right DTO, then shows the score", async () => {
+  it("walks the wizard, enforces single-selection, and submits the right DTO", async () => {
     const user = userEvent.setup();
     swrState({ data: quiz });
     submitQuiz.mockResolvedValue({ correct: 1, total: 2 });
 
     render(<TakeQuizPage />);
 
-    await user.click(screen.getByLabelText("First"));
-    await user.click(screen.getByLabelText("Second")); // replaces First
-    await user.click(screen.getByLabelText("Alpha"));
-    await user.click(screen.getByLabelText("Beta"));
+    const next = () => screen.getByRole("button", { name: /next question/i });
+    expect(next()).toBeDisabled();
 
-    await user.click(screen.getByRole("button", { name: /submit answers/i }));
+    await user.click(screen.getByLabelText("A) First"));
+    await user.click(screen.getByLabelText("B) Second")); // replaces First
+    expect(next()).toBeEnabled();
+    await user.click(next());
+
+    await user.click(await screen.findByLabelText("A) Alpha"));
+    await user.click(screen.getByLabelText("B) Beta"));
+
+    await user.click(screen.getByRole("button", { name: /^submit$/i }));
 
     await waitFor(() => expect(submitQuiz).toHaveBeenCalledTimes(1));
     expect(submitQuiz).toHaveBeenCalledWith("abc123", {
@@ -83,15 +89,33 @@ describe("TakeQuizPage", () => {
     expect(await screen.findByText("1/2")).toBeInTheDocument();
   });
 
-  it("resets when 'Try again' is clicked", async () => {
+  it("keeps a selection when navigating back", async () => {
+    const user = userEvent.setup();
+    swrState({ data: quiz });
+
+    render(<TakeQuizPage />);
+
+    await user.click(screen.getByLabelText("A) First"));
+    await user.click(screen.getByRole("button", { name: /next question/i }));
+
+    await user.click(await screen.findByRole("button", { name: /back/i }));
+    expect(screen.getByLabelText("A) First")).toBeChecked();
+  });
+
+  it("resets to the first question when 'Try again' is clicked", async () => {
     const user = userEvent.setup();
     swrState({ data: quiz });
     submitQuiz.mockResolvedValue({ correct: 0, total: 2 });
 
     render(<TakeQuizPage />);
-    await user.click(screen.getByRole("button", { name: /submit answers/i }));
+
+    await user.click(screen.getByLabelText("A) First"));
+    await user.click(screen.getByRole("button", { name: /next question/i }));
+    await user.click(await screen.findByLabelText("A) Alpha"));
+    await user.click(screen.getByRole("button", { name: /^submit$/i }));
 
     await user.click(await screen.findByRole("button", { name: /try again/i }));
-    expect(screen.getByRole("button", { name: /submit answers/i })).toBeInTheDocument();
+    expect(screen.getByText(/1\/2 questions/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("A) First")).not.toBeChecked();
   });
 });
