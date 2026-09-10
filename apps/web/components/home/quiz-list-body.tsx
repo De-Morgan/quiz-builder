@@ -16,9 +16,7 @@ type Props = {
 
 // Drafts first — they're the ones that still need the author's attention.
 function sortQuizzes(quizzes: QuizSummary[]): QuizSummary[] {
-  return [...quizzes].sort(
-    (a, b) => Number(a.published) - Number(b.published),
-  );
+  return [...quizzes].sort((a, b) => Number(a.published) - Number(b.published));
 }
 
 export function QuizListBody({ data, error, isLoading, mutate }: Props) {
