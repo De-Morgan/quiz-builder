@@ -8,7 +8,8 @@ export class LoggerMiddleware implements NestMiddleware {
 
   use(req: Request, res: Response, next: NextFunction): void {
     const start = Date.now();
-    const { method, url, headers, query, body } = req;
+    const { method, url, headers, query } = req;
+    const body: unknown = req.body;
 
     res.on('finish', () => {
       const responseTime = Date.now() - start;

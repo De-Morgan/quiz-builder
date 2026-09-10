@@ -11,8 +11,9 @@ describe('JwtStrategy', () => {
 
   it('resolves the payload subject to a user via AuthService', async () => {
     const user = { id: 'user-1', email: 'maya@example.com' };
+    const getUserById = jest.fn().mockResolvedValue(user);
     const authService = {
-      getUserById: jest.fn().mockResolvedValue(user),
+      getUserById,
     } as unknown as AuthService;
 
     const strategy = new JwtStrategy(configuration, authService);
@@ -20,7 +21,7 @@ describe('JwtStrategy', () => {
     await expect(
       strategy.validate({ sub: 'user-1', email: 'maya@example.com' }),
     ).resolves.toBe(user);
-    expect(authService.getUserById).toHaveBeenCalledWith('user-1');
+    expect(getUserById).toHaveBeenCalledWith('user-1');
   });
 
   it('propagates the rejection when the user cannot be found', async () => {

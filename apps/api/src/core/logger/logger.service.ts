@@ -15,8 +15,17 @@ export class LoggerService implements NestLogger {
       ? combine(
           colorize(),
           timestamp(),
-          printf(({ level, message, timestamp, context, meta, trace }) => {
-            return `${timestamp} ${level}: [${context}] ${message} ${
+          printf((info) => {
+            const { level, message, timestamp, context, meta, trace } =
+              info as {
+                level: string;
+                message: string;
+                timestamp: string;
+                context?: string;
+                meta?: unknown;
+                trace?: unknown;
+              };
+            return `${timestamp} ${level}: [${context ?? ''}] ${message} ${
               meta ? JSON.stringify(meta) : ''
             } ${trace ? JSON.stringify(trace) : ''}`;
           }),
@@ -30,23 +39,28 @@ export class LoggerService implements NestLogger {
     });
   }
 
-  log(message: any, context?: string, meta?: any): void {
-    this.logger.info(message, { context, meta });
+  log(message: unknown, context?: string, meta?: unknown): void {
+    this.logger.info(String(message), { context, meta });
   }
 
-  error(message: any, trace?: string, context?: string, meta?: any): void {
-    this.logger.error(message, { context, trace, meta });
+  error(
+    message: unknown,
+    trace?: string,
+    context?: string,
+    meta?: unknown,
+  ): void {
+    this.logger.error(String(message), { context, trace, meta });
   }
 
-  warn(message: any, context?: string, meta?: any): void {
-    this.logger.warn(message, { context, meta });
+  warn(message: unknown, context?: string, meta?: unknown): void {
+    this.logger.warn(String(message), { context, meta });
   }
 
-  debug(message: any, context?: string, meta?: any): void {
-    this.logger.debug(message, { context, meta });
+  debug(message: unknown, context?: string, meta?: unknown): void {
+    this.logger.debug(String(message), { context, meta });
   }
 
-  verbose(message: any, context?: string, meta?: any): void {
-    this.logger.verbose(message, { context, meta });
+  verbose(message: unknown, context?: string, meta?: unknown): void {
+    this.logger.verbose(String(message), { context, meta });
   }
 }
