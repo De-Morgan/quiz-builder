@@ -3,6 +3,8 @@
 A quiz builder. Authenticated users create, edit, and publish quizzes; anonymous
 visitors take a published quiz via a shared link and see only their score.
 
+Check the requirement in [REQUIREMENT.md](REQUIREMENT.md)
+
 ## Monorepo layout
 
 pnpm + Turborepo workspace. Two decoupled apps: the API is client-agnostic (REST
