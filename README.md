@@ -3,7 +3,9 @@
 A quiz builder. Authenticated users create, edit, and publish quizzes; anonymous
 visitors take a published quiz via a shared link and see only their score.
 
-Check the requirement in [REQUIREMENT.md](REQUIREMENT.md)
+Check the project scope in [PRD.md](PRD.md)
+
+[LIVE DEMO](https://quiz-builder-michael.vercel.app/)
 
 ## Monorepo layout
 
